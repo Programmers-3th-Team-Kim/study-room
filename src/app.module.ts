@@ -12,6 +12,7 @@ import { PlannersModule } from './planners/planners.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { UsersModule } from './users/users.module';
 import { RankingsModule } from './rankings/rankings.module';
+import { ImageModule } from './image/image.modules';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RankingsModule } from './rankings/rankings.module';
     StatisticsModule,
     UsersModule,
     RankingsModule,
+    ImageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
