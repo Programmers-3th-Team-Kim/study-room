@@ -323,9 +323,14 @@ export class StatisticsService {
       0
     );
 
-    const myYesterdayTotalSum = yesterdayStatistic.filter(
+    const filteredMyYesterdayStatistic = yesterdayStatistic.filter(
       (item) => item.userId.toString() === userId
-    )[0].totalTime;
+    );
+
+    const myYesterdayTotalSum =
+      filteredMyYesterdayStatistic.length !== 0
+        ? filteredMyYesterdayStatistic[0].totalTime
+        : 0;
 
     const allYesterdayTotal = this.secondsToHHMMSS(
       allYesterdayTotalSum / yesterdayStatistic.length,
