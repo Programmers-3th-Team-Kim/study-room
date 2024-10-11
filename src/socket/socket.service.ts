@@ -162,6 +162,13 @@ export class SocketService {
       await this.roomModel.deleteOne({
         _id: new Types.ObjectId(roomId),
       });
+    } else {
+      if (updatedRoom.roomManager.toString() === userId) {
+        await this.roomModel.findOneAndUpdate(
+          { _id: new Types.ObjectId(roomId) },
+          { roomManager: updatedRoom.currentMember[0] }
+        );
+      }
     }
 
     client.leave(roomId);
