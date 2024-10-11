@@ -85,7 +85,6 @@ export class AuthService {
         nickname: user.nickname,
         imageUrl: user.imageUrl,
         introduction: user.introduction,
-        dDay: user.dDay,
       },
     };
   }

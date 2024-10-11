@@ -1,12 +1,6 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-// DTO로 추후 재사용 가능
-class DDay {
-  date: Date;
-  todo: string;
-}
-
 @Schema({ collection: 'Users', strict: 'throw', minimize: false })
 export class User extends Document {
   @Prop({ require: true })
@@ -26,9 +20,6 @@ export class User extends Document {
 
   @Prop({ default: '' })
   introduction: string;
-
-  @Prop({ type: DDay, default: { date: null, todo: '' } })
-  dDay: DDay;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
