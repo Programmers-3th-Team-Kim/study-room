@@ -97,8 +97,14 @@ export class RankingsService {
     const prevUserInfo = updatedStatistic.filter(
       (item) => item.rank === userInfo.rank - 1
     );
+    const prevPrevUserInfo = updatedStatistic.filter(
+      (item) => item.rank === userInfo.rank - 2
+    );
     const nextUserInfo = updatedStatistic.filter(
       (item) => item.rank === userInfo.rank + 1
+    );
+    const nextNextUserInfo = updatedStatistic.filter(
+      (item) => item.rank === userInfo.rank + 2
     );
 
     return {
@@ -108,7 +114,9 @@ export class RankingsService {
       },
       userInfo,
       prevUserInfo: prevUserInfo.length ? prevUserInfo[0] : {},
+      prevPrevUserInfo: prevPrevUserInfo.length ? prevPrevUserInfo[0] : {},
       nextUserInfo: nextUserInfo.length ? nextUserInfo[0] : {},
+      nextNextUserInfo: nextNextUserInfo.length ? nextNextUserInfo[0] : {},
     };
   }
 
