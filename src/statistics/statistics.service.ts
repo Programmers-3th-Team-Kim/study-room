@@ -424,11 +424,11 @@ export class StatisticsService {
 
     const results = {
       all: {
-        totalAverage: Math.round(allAverageSum / 60),
+        totalAverage: Math.round(allAverageSum / 60 / 7),
         dailyAverage: allAverageList,
       },
       my: {
-        totalAverage: Math.round(myAverageSum / 60),
+        totalAverage: Math.round(myAverageSum / 60 / 7),
         dailyAverage: myAverageList,
       },
     };
