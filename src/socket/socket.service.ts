@@ -131,7 +131,10 @@ export class SocketService {
         planner.date === date
           ? { _id: temp.plannerId }
           : { todo: planner.todo, date, userId: new Types.ObjectId(userId) };
-      const maxTime = date === today ? currentTime - temp.maxStartTime : 0;
+      const maxTime =
+        date === today
+          ? Math.floor((currentTime - temp.maxStartTime) / 1000)
+          : 0;
 
       await this.updatePlanner(filter, {
         $push: { timelineList },
