@@ -11,6 +11,6 @@ export class ChatDto {
 
 export class PayloadDto {
   plannerId: string;
-  currentTime: number;
+  currentTime?: number;
   totalTime?: number;
 }

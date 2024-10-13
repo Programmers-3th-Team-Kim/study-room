@@ -8,7 +8,6 @@ export class SPlannerDto {
   totalTime: number;
 }
 
-
 export class GetPlannerDto {
   date: string;
 }
@@ -18,9 +17,8 @@ export class CreatePlannerDto {
   todo: string;
 }
 
-
 export class ModifyPlannerDto {
   plannerId: string;
-  todo: string;
-  isComplete: boolean;
+  todo?: string;
+  isComplete?: boolean;
 }

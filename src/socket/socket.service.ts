@@ -180,7 +180,8 @@ export class SocketService {
   }
 
   async start(client: Socket, payload: PayloadDto) {
-    const { plannerId, currentTime, totalTime } = payload;
+    const { plannerId, totalTime } = payload;
+    const currentTime = Date.now();
     const userId: string = client.data.user._id;
     const { roomId, nickname } = this.getSocketQuery(client);
 
@@ -220,8 +221,8 @@ export class SocketService {
   }
 
   async stop(client: Socket, payload: PayloadDto) {
-    const { currentTime, totalTime } = payload;
-    const plannerId = payload.plannerId;
+    const { plannerId, totalTime } = payload;
+    const currentTime = Date.now();
     const { roomId, nickname } = this.getSocketQuery(client);
     const userId: string = client.data.user._id;
 
@@ -279,7 +280,8 @@ export class SocketService {
   }
 
   async change(client: Socket, payload: PayloadDto) {
-    const { plannerId, currentTime, totalTime } = payload;
+    const { plannerId, totalTime } = payload;
+    const currentTime = Date.now();
     const { roomId, nickname } = this.getSocketQuery(client);
     const userId: string = client.data.user._id;
 
@@ -330,7 +332,8 @@ export class SocketService {
   }
 
   async update(client: Socket, payload: PayloadDto) {
-    const { plannerId, currentTime } = payload;
+    const { plannerId } = payload;
+    const currentTime = Date.now();
     const userId: string = client.data.user._id;
 
     const temp = await this.findTemp(userId);
