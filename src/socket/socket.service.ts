@@ -20,7 +20,12 @@ import {
   SPlannerDto,
 } from './dto/planner.dto';
 import { Temp } from './temps.schema';
-import { NoticeDto, RoomAndMyInfoDto } from './dto/joinAndLeave.dto';
+import {
+  ModifyRoomDto,
+  NoticeDto,
+  ResponseRoomDto,
+  RoomAndMyInfoDto,
+} from './dto/joinAndLeave.dto';
 import {
   RoomManagerAndMembersToNicknameDto,
   SocketQueryDto,
@@ -461,7 +466,10 @@ export class SocketService {
     return response;
   }
 
-  async modifyRoomOption(payload: any, client: Socket) {
+  async modifyRoomOption(
+    payload: ModifyRoomDto,
+    client: Socket
+  ): Promise<ResponseRoomDto> {
     const { roomId } = this.getSocketQuery(client);
     const userId: string = client.data.user._id;
 
@@ -475,12 +483,25 @@ export class SocketService {
       throw new WsException('방장만 방설정을 변경할 수 있습니다.');
     }
 
-    const updatedRoom = await this.roomModel.findOneAndUpdate(
-      { _id: new Types.ObjectId(roomId) },
-      payload
-    );
+    const updatedRoom = await this.roomModel
+      .findOneAndUpdate({ _id: new Types.ObjectId(roomId) }, payload)
+      .lean();
 
-    return updatedRoom;
+    const user = await this.userModel.findOne({ _id: updatedRoom.roomManager });
+
+    if (!user) {
+      throw new WsException('roomManager 정보가 없습니다.');
+    }
+
+    const response: ResponseRoomDto = {
+      title: updatedRoom.title,
+      notice: updatedRoom.notice,
+      roomManager: user.nickname,
+      isChat: updatedRoom.isChat,
+      password: updatedRoom.password,
+    };
+
+    return response;
   }
 
   getFormattedDate(option: number = 0): string {

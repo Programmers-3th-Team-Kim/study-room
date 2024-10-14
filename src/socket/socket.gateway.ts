@@ -16,7 +16,7 @@ import {
   GetPlannerDto,
   ModifyPlannerDto,
 } from './dto/planner.dto';
-import { ResponseUserInfoDto } from './dto/joinAndLeave.dto';
+import { ModifyRoomDto, ResponseUserInfoDto } from './dto/joinAndLeave.dto';
 
 @WebSocketGateway({
   namespace: '/rooms',
@@ -73,8 +73,11 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const now = Date.now();
       const { roomId, nickname } = this.socketService.getSocketQuery(client);
       await this.socketService.save(client, now);
-      client.broadcast.to(roomId).emit('subMember', { nickname });
-      const { isChat } = await this.socketService.leaveRoom(client, roomId);
+      const { isChat, roomManager } = await this.socketService.leaveRoom(
+        client,
+        roomId
+      );
+      client.broadcast.to(roomId).emit('subMember', { nickname, roomManager });
       if (isChat) {
         this.socketService.leaveChat(this.server, roomId, nickname);
       }
@@ -209,6 +212,23 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const planner = await this.socketService.modifyPlanner(payload);
       client.emit('responseModifyPlanner', planner);
+    } catch (error) {
+      console.log(error);
+      client.emit('error', { error: error.message });
+    }
+  }
+
+  @SubscribeMessage('modifyRoomInfo')
+  async modifyRoomOption(
+    @MessageBody() payload: ModifyRoomDto,
+    @ConnectedSocket() client: Socket
+  ) {
+    try {
+      const response = await this.socketService.modifyRoomOption(
+        payload,
+        client
+      );
+      this.server.emit('modifiedRoomInfo', response);
     } catch (error) {
       console.log(error);
       client.emit('error', { error: error.message });
