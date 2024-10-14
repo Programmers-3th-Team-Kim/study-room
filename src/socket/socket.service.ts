@@ -163,7 +163,8 @@ export class SocketService {
 
     const updatedRoom = await this.roomModel.findOneAndUpdate(
       { _id: new Types.ObjectId(roomId) },
-      { $pull: { currentMember: new Types.ObjectId(userId) } }
+      { $pull: { currentMember: new Types.ObjectId(userId) } },
+      { new: true }
     );
 
     if (!updatedRoom.currentMember.length) {
@@ -483,9 +484,11 @@ export class SocketService {
       throw new WsException('방장만 방설정을 변경할 수 있습니다.');
     }
 
-    const updatedRoom = await this.roomModel
-      .findOneAndUpdate({ _id: new Types.ObjectId(roomId) }, payload)
-      .lean();
+    const updatedRoom = await this.roomModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(roomId) },
+      payload,
+      { new: true }
+    );
 
     const user = await this.userModel.findOne({ _id: updatedRoom.roomManager });
 
