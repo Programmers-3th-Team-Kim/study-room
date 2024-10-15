@@ -66,9 +66,18 @@ export class SocketService {
       throw new WsException('스터디방이 존재하지 않습니다.');
     }
 
+    const objectUserId = new Types.ObjectId(userId);
+    const isMemberExists = roomExists.currentMember.some((memberId) =>
+      memberId.equals(objectUserId)
+    );
+
+    if (isMemberExists) {
+      throw new WsException('중복 접속');
+    }
+
     const updatedRoom = await this.roomModel.findOneAndUpdate(
       { _id: new Types.ObjectId(roomId) },
-      { $addToSet: { currentMember: new Types.ObjectId(userId) } },
+      { $push: { currentMember: new Types.ObjectId(userId) } },
       { new: true }
     );
 
