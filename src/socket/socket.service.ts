@@ -63,7 +63,7 @@ export class SocketService {
 
     const roomExists = await this.roomModel.findById(roomId);
     if (!roomExists) {
-      throw new WsException('스터디방이 존재하지 않습니다.');
+      throw new WsException('NOTFOUND_ROOMS');
     }
 
     const objectUserId = new Types.ObjectId(userId);
@@ -72,7 +72,7 @@ export class SocketService {
     );
 
     if (isMemberExists) {
-      throw new WsException('중복 접속');
+      throw new WsException('CONFLICT_USERS');
     }
 
     const updatedRoom = await this.roomModel.findOneAndUpdate(
@@ -137,6 +137,10 @@ export class SocketService {
 
     const planner = await this.plannerModel.findById(temp.plannerId);
 
+    if (!planner) {
+      throw new WsException('NOTFOUND_PLANNERS');
+    }
+
     const today = this.getFormattedDate();
 
     results.forEach(async (v) => {
@@ -167,7 +171,7 @@ export class SocketService {
 
     const roomExists = await this.roomModel.findById(roomId);
     if (!roomExists) {
-      throw new WsException('스터디방이 존재하지 않습니다.');
+      throw new WsException('NOTFOUND_ROOMS');
     }
 
     const updatedRoom = await this.roomModel.findOneAndUpdate(
@@ -201,10 +205,15 @@ export class SocketService {
     const { roomId, nickname } = this.getSocketQuery(client);
 
     const plannerCheck = await this.plannerModel.findById(plannerId);
+
+    if (!plannerCheck) {
+      throw new WsException('NOTFOUND_PLANNERS');
+    }
+
     const today = this.getFormattedDate();
 
     if (plannerCheck.date < today) {
-      throw new WsException('지난 할 일은 선택할 수 없습니다.');
+      throw new WsException('BADREQUEST_PLANNERS');
     }
 
     const temp = await this.findTemp(userId);
@@ -254,7 +263,7 @@ export class SocketService {
     }
 
     if (temp.plannerId.toString() !== plannerId) {
-      throw new WsException('일시정지 에러');
+      throw new WsException('BADREQUEST_PLANNERS');
     }
 
     const results = this.splitTimeIntoIntervals(
@@ -263,6 +272,10 @@ export class SocketService {
     );
 
     const planner = await this.plannerModel.findById(plannerId);
+
+    if (!planner) {
+      throw new WsException('NOTFOUND_PLANNERS');
+    }
 
     const today = this.getFormattedDate();
 
@@ -309,7 +322,7 @@ export class SocketService {
     const today = this.getFormattedDate();
 
     if (plannerCheck.date < today) {
-      throw new WsException('지난 할 일은 선택할 수 없습니다.');
+      throw new WsException('BADREQUEST_PLANNERS');
     }
 
     const temp = await this.findTemp(userId);
@@ -329,6 +342,10 @@ export class SocketService {
     );
 
     const planner = await this.plannerModel.findById(temp.plannerId);
+
+    if (!planner) {
+      throw new WsException('NOTFOUND_PLANNERS');
+    }
 
     results.forEach(async (v) => {
       const { date, totalTime, timelineList, ...etc } = v;
@@ -376,6 +393,10 @@ export class SocketService {
 
     const planner = await this.plannerModel.findById(plannerId);
 
+    if (!planner) {
+      throw new WsException('NOTFOUND_PLANNERS');
+    }
+
     results.forEach(async (v) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { date, totalTime, timelineList, ...etc } = v;
@@ -408,8 +429,7 @@ export class SocketService {
     const tomorrow = this.getFormattedDate(+1);
 
     if (!(yesterday <= date && date <= tomorrow)) {
-      console.log('플래너를 불러올 수 없습니다.');
-      throw new WsException('플래너를 불러올 수 없습니다.');
+      throw new WsException('NOTFOUND_PLANNERS');
     }
 
     const planner = await this.plannerModel.find(
@@ -462,7 +482,7 @@ export class SocketService {
     );
 
     if (!planner) {
-      throw new WsException('플래너를 찾을 수 없습니다.');
+      throw new WsException('NOTFOUND_PLANNERS');
     }
 
     const response = {
@@ -486,11 +506,11 @@ export class SocketService {
     const room = await this.roomModel.findById(roomId);
 
     if (!room) {
-      throw new WsException('방이 존재하지 않습니다.');
+      throw new WsException('NOTFOUND_ROOMS');
     }
 
     if (room.roomManager.toString() !== userId) {
-      throw new WsException('방장만 방설정을 변경할 수 있습니다.');
+      throw new WsException('UNAUTHORIZED_USERS');
     }
 
     const updatedRoom = await this.roomModel.findOneAndUpdate(
@@ -502,7 +522,7 @@ export class SocketService {
     const user = await this.userModel.findOne({ _id: updatedRoom.roomManager });
 
     if (!user) {
-      throw new WsException('roomManager 정보가 없습니다.');
+      throw new WsException('NOTFOUND_USERS');
     }
 
     const response: ResponseRoomDto = {
@@ -580,7 +600,7 @@ export class SocketService {
     );
 
     if (!(statistic.modifiedCount === 1 || statistic.upsertedCount === 1)) {
-      throw new WsException('통계 업데이트 에러');
+      throw new WsException('UPDATE_STATISTICS');
     }
 
     return statistic;
@@ -600,7 +620,7 @@ export class SocketService {
     );
 
     if (!planner) {
-      throw new WsException('플래너 업데이트 에러');
+      throw new WsException('UPDATE_PLANNERS');
     }
 
     return planner;
@@ -625,7 +645,7 @@ export class SocketService {
     );
 
     if (!updatedTemp) {
-      throw new WsException('데이터 업데이트 에러');
+      throw new WsException('UPDATE_TEMPS');
     }
   }
 

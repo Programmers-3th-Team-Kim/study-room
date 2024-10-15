@@ -10,7 +10,7 @@ export class SocketJwtAuthService {
     const token = socket.handshake.auth?.token;
 
     if (!token || !token.startsWith('Bearer ')) {
-      socket.emit('error', { message: 'Missing or invalid token' });
+      socket.emit('unauthorized');
       return false;
     }
 
@@ -22,7 +22,7 @@ export class SocketJwtAuthService {
       return true;
     } catch (error) {
       console.log(error.name);
-      socket.emit('error', { message: 'Invalid token' });
+      socket.emit('unauthorized');
       return false;
     }
   }

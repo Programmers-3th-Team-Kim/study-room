@@ -59,7 +59,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -83,7 +83,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
     console.log(`Client disconnected: ${client.data.user._id}`);
   }
@@ -131,7 +131,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.start(client, payload);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -144,7 +144,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.stop(client, payload);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -157,7 +157,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.change(client, payload);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -170,7 +170,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.socketService.update(client, payload);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -186,7 +186,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('responseGetPlanner', planner);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -200,7 +200,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('responseCreatePlanner', planner);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -214,7 +214,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('responseModifyPlanner', planner);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 
@@ -231,7 +231,7 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.emit('modifiedRoomInfo', response);
     } catch (error) {
       console.log(error);
-      client.emit('error', { error: error.message });
+      client.emit('error', { message: error.message });
     }
   }
 }
