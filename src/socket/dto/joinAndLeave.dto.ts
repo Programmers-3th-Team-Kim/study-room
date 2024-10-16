@@ -45,7 +45,7 @@ export class ModifyRoomDto {
     each: true,
     message: '태그는 최대 10글자까지 입력 가능합니다.',
   })
-  tagList: string[] = [];
+  tagList: string[];
 
   @IsOptional()
   @IsString({ message: '공지사항은 문자열이어야 합니다.' })
@@ -75,7 +75,11 @@ export class ModifyRoomDto {
 export class ResponseRoomDto {
   title: string;
   notice: string;
-  roomManager: string;
+  tagList: string[];
+  maxNum: number;
+  isPublic: boolean;
   isChat: boolean;
+  imageUrl: string;
   password: string;
+  roomManager: string;
 }

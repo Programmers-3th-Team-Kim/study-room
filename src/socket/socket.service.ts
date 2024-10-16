@@ -528,9 +528,13 @@ export class SocketService {
     const response: ResponseRoomDto = {
       title: updatedRoom.title,
       notice: updatedRoom.notice,
+      tagList: updatedRoom.tagList,
+      maxNum: updatedRoom.maxNum,
+      isPublic: updatedRoom.isPublic,
       roomManager: user.nickname,
       isChat: updatedRoom.isChat,
       password: updatedRoom.password,
+      imageUrl: updatedRoom.imageUrl,
     };
 
     return response;
