@@ -166,7 +166,10 @@ export class SocketService {
     });
   }
 
-  async leaveRoom(client: Socket, roomId: string): Promise<Room> {
+  async leaveRoom(
+    client: Socket,
+    roomId: string
+  ): Promise<{ isChat: boolean; roomManager: string }> {
     const userId: string = client.data.user._id;
 
     const roomExists = await this.roomModel.findById(roomId);
@@ -193,9 +196,17 @@ export class SocketService {
       }
     }
 
+    const user = await this.userModel.findOne({
+      _id: updatedRoom.currentMember[0],
+    });
+
+    if (!user) {
+      throw new WsException('NOTFOUND_USERS');
+    }
+
     client.leave(roomId);
 
-    return updatedRoom;
+    return { isChat: updatedRoom.isChat, roomManager: user.nickname };
   }
 
   async start(client: Socket, payload: PayloadDto) {
