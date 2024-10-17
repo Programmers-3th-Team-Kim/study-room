@@ -13,8 +13,12 @@ import { SPlannerDto } from './planner.dto';
 export class RoomAndMyInfoDto {
   title: string;
   notice: string;
-  password: string;
+  tagList: string[];
+  maxNum: number;
+  isPublic: boolean;
   isChat: boolean;
+  imageUrl: string;
+  password: string;
   roomManager: string;
   currentMember: string[];
   planner: SPlannerDto[];
