@@ -41,6 +41,7 @@ export class PlannersService {
         // 시간이 겹치는 날짜 탐색
         const overlappingPlanners = await this.plannerModel.find({
           date: plannerDto.date,
+          userId: new Types.ObjectId(userId),
           $or: [
             {
               startTime: { $lt: plannerDto.endTime },
