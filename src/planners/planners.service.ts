@@ -19,25 +19,60 @@ export class PlannersService {
     일: 6,
   };
 
+  private readonly reverseMappingDays: { [key: number]: string } = {
+    0: '월',
+    1: '화',
+    2: '수',
+    3: '목',
+    4: '금',
+    5: '토',
+    6: '일',
+  };
+
   async createPlan(userId: string, plannerDto: Partial<Planner>): Promise<any> {
     try {
       let createDataNum = 0;
+      let createApprove = true;
       const date = new Date(plannerDto.date); // 할 일을 생성하는 날짜
       const repeatDays = plannerDto.repeatDays;
       const repeatEndDate = new Date(plannerDto.repeatEndDate);
 
       if (plannerDto.repeatEndDate === undefined) {
-        // 반복 요일이 존재하지 않는 할 일 저장
-        const newPlanQuery = new this.plannerModel({
-          ...plannerDto,
-          userId: new Types.ObjectId(userId),
+        // 시간이 겹치는 날짜 탐색
+        const overlappingPlanners = await this.plannerModel.find({
+          date: plannerDto.date,
+          $or: [
+            {
+              startTime: { $lt: plannerDto.endTime },
+              endTime: { $gt: plannerDto.startTime },
+            },
+          ],
         });
 
-        const savedPlan = await newPlanQuery.save();
-        console.log('단일 데이터 생성 성공');
-        console.log(savedPlan);
+        if (overlappingPlanners.length > 0) {
+          createApprove = false;
+        }
 
-        return savedPlan;
+        if (createApprove) {
+          // 반복 요일이 존재하지 않는 할 일 저장
+          const newPlanQuery = new this.plannerModel({
+            ...plannerDto,
+            userId: new Types.ObjectId(userId),
+          });
+
+          const savedPlan = await newPlanQuery.save();
+          console.log('단일 데이터 생성 성공');
+          console.log(savedPlan);
+
+          return savedPlan;
+        } else {
+          const refuseRes = {
+            message: `${plannerDto.date}에 시간대가 겹치는 할 일이 있어 생성이 불가능 합니다.`,
+            date: plannerDto.date,
+          };
+
+          return refuseRes;
+        }
       } else {
         const sortedDaysArray = repeatDays
           .map((day) => this.mappingDays[day])
@@ -48,6 +83,9 @@ export class PlannersService {
           });
         console.log(
           `${plannerDto.date} ~ ${plannerDto.repeatEndDate} 에 ${repeatDays} 요일 반복`
+        );
+        const newRepeatDays = sortedDaysArray.map(
+          (dayNumber) => this.reverseMappingDays[dayNumber]
         );
 
         const dateArray: string[] = [];
@@ -64,30 +102,61 @@ export class PlannersService {
         }
         dateArray.sort();
 
-        let rootId: Types.ObjectId;
+        // 시간이 겹치는 날짜 탐색
+        const refuseDate: string[] = [];
 
         for (let i: number = 0; i < dateArray.length; i++) {
-          if (i === 0) {
-            const newPlanQuery = new this.plannerModel({
-              ...plannerDto,
-              date: dateArray[0],
-              userId: new Types.ObjectId(userId),
-            });
+          const overlappingPlanners = await this.plannerModel.find({
+            date: dateArray[i],
+            $or: [
+              {
+                startTime: { $lt: plannerDto.endTime },
+                endTime: { $gt: plannerDto.startTime },
+              },
+            ],
+          });
 
-            const savedPlan = await newPlanQuery.save();
-            rootId = new Types.ObjectId(savedPlan._id);
-          } else {
-            await this.createPlanCascade(
-              userId,
-              rootId,
-              dateArray[i],
-              plannerDto
-            );
+          if (overlappingPlanners.length > 0) {
+            createApprove = false;
+            refuseDate.push(dateArray[i]);
           }
-          createDataNum += 1;
         }
-        console.log(`${createDataNum} 개의 데이터가 생성되었습니다.`);
-        return `${createDataNum} 개의 데이터가 생성되었습니다.`;
+
+        if (createApprove) {
+          let rootId: Types.ObjectId;
+
+          for (let j: number = 0; j < dateArray.length; j++) {
+            if (j === 0) {
+              const newPlanQuery = new this.plannerModel({
+                ...plannerDto,
+                repeatDays: newRepeatDays,
+                date: dateArray[0],
+                userId: new Types.ObjectId(userId),
+              });
+
+              const savedPlan = await newPlanQuery.save();
+              rootId = new Types.ObjectId(savedPlan._id);
+            } else {
+              await this.createPlanCascade(
+                userId,
+                rootId,
+                newRepeatDays,
+                dateArray[j],
+                plannerDto
+              );
+            }
+            createDataNum += 1;
+          }
+          console.log(`${createDataNum} 개의 데이터가 생성되었습니다.`);
+          return `${createDataNum} 개의 데이터가 생성되었습니다.`;
+        } else {
+          const refuseRes = {
+            message: `${refuseDate} 날짜에 시간대가 겹치는 할 일이 있어 요일 반복 플래너 생성이 불가능 합니다.`,
+            dates: refuseDate,
+          };
+
+          return refuseRes;
+        }
       }
     } catch (error) {
       console.log(error);
@@ -97,11 +166,13 @@ export class PlannersService {
   private async createPlanCascade(
     userId: string,
     parentId: Types.ObjectId,
+    newRepeatDays: string[],
     plannerDate: string,
     plannerDto: Partial<Planner>
   ): Promise<Planner> {
     const newChildPlanQuery = new this.plannerModel({
       ...plannerDto,
+      repeatDays: newRepeatDays,
       date: plannerDate,
       userId: new Types.ObjectId(userId),
       parentObjectId: new Types.ObjectId(parentId),
@@ -168,6 +239,7 @@ export class PlannersService {
       ...updatePlannerDto
     } = plannerDto;
 
+    let updateApprove = true;
     const isHaveRepetition = !(
       plannerDto.repeatDays.length === 0 ||
       plannerDto.repeatEndDate === undefined
@@ -175,26 +247,40 @@ export class PlannersService {
     const isHaveParent = !(plannerDto.parentObjectId === undefined);
 
     if (isHaveParent === false && isHaveRepetition === false) {
-      await this.plannerModel
-        .findByIdAndUpdate(new Types.ObjectId(plannerId), updatePlannerDto, {
-          new: true,
-        })
-        .exec();
-      console.log(`단일 할 일 업데이트`);
-    } else if (isHaveRepetition === true) {
-      let rootId = new Types.ObjectId(plannerId);
-      if (isHaveParent === true) {
-        rootId = new Types.ObjectId(parentObjectId);
+      // 시간이 겹치는 할 일 탐색
+      const overlappingPlanners = await this.plannerModel.find({
+        date: plannerDto.date,
+        $or: [
+          {
+            startTime: { $lt: plannerDto.endTime },
+            endTime: { $gt: plannerDto.startTime },
+          },
+        ],
+      });
+
+      if (overlappingPlanners.length > 0) {
+        updateApprove = false;
       }
 
-      // 기준 날짜 이후 데이터 삭제
-      console.log(rootId);
-      const deleteResult = await this.plannerModel.deleteMany({
-        date: { $gt: date },
-        parentObjectId: rootId,
-      });
-      console.log(`${deleteResult.deletedCount}개의 데이터가 삭제되었습니다.`);
+      if (updateApprove) {
+        await this.plannerModel
+          .findByIdAndUpdate(new Types.ObjectId(plannerId), updatePlannerDto, {
+            new: true,
+          })
+          .exec();
 
+        console.log(`단일 플래너 업데이트`);
+        return { message: `단일 플래너 업데이트 성공` };
+      } else {
+        console.log(`단일 플래너 업데이트 실패 : overlapping`);
+        const refuseRes = {
+          message: `${plannerDto.date}에 시간대가 겹치는 데이터가 있어 수정이 불가능 합니다.`,
+          date: plannerDto.date,
+        };
+
+        return refuseRes;
+      }
+    } else if (isHaveRepetition === true) {
       // 반복 요일 매핑
       const repeatDays = plannerDto.repeatDays;
       const sortedDaysArray = repeatDays
@@ -207,43 +293,9 @@ export class PlannersService {
       console.log(
         `${plannerDto.date} ~ ${plannerDto.repeatEndDate} 에 ${repeatDays} 요일 반복`
       );
-
-      const standardDate = new Date(date);
-      if (sortedDaysArray.includes((standardDate.getDay() + 6) % 7)) {
-        const standardDate = new Date(date);
-        standardDate.setDate(standardDate.getDate() - 1);
-        const dayAgo = standardDate.toISOString().split('T')[0]; // 기준일 하루 전
-
-        // 기준 날짜 이전(기준 날짜 미포함)의 묶인 데이터들의 repeatEndDate를 기준 날짜 하루 전으로 설정
-        await this.plannerModel.findByIdAndUpdate(
-          rootId,
-          { $set: { repeatEndDate: dayAgo } },
-          { new: true }
-        );
-
-        await this.plannerModel.updateMany(
-          {
-            parentObjectId: rootId,
-            date: { $lt: date },
-          },
-          { $set: { repeatEndDate: dayAgo } }
-        );
-      } else {
-        // 기존 날짜 이전(기존 날짜 포함) 데이터들의 repeatEndDate를 standardDate로 설정
-        await this.plannerModel.findByIdAndUpdate(
-          rootId,
-          { $set: { repeatEndDate: date } },
-          { new: true }
-        );
-
-        await this.plannerModel.updateMany(
-          {
-            parentObjectId: rootId,
-            date: { $lt: date },
-          },
-          { $set: { repeatEndDate: date } }
-        );
-      }
+      const newRepeatDays = sortedDaysArray.map(
+        (dayNumber) => this.reverseMappingDays[dayNumber]
+      );
 
       // 재생성 해야 하는 날짜들의 데이터 계산
       const dateArray: string[] = [];
@@ -261,76 +313,165 @@ export class PlannersService {
       }
       dateArray.sort();
 
-      // 재생성
-      let newRootId: Types.ObjectId;
-      let createDataNum = 0;
+      // 시간대가 겹치는 할 일 탐색
+      const refuseDate: string[] = [];
 
       for (let i: number = 0; i < dateArray.length; i++) {
-        if (i === 0) {
-          // 만약 재생성 해야 하는 날짜가 오늘이라면 오늘 할 일을 업데이트, newRootId = new Types.ObjectId(plannerId)
-          if (dateArray[i] === date) {
-            await this.plannerModel.findByIdAndUpdate(
-              new Types.ObjectId(plannerId),
-              {
-                $set: updatePlannerDto,
-                $unset: { parentObjectId: '' },
-              },
-              { new: true }
-            );
-            newRootId = new Types.ObjectId(plannerId);
-          } else {
-            // 아니라면 날짜 배열의 첫 번째 _id를 newRootId로 설정하고 나머지 할 일 재생성
-            const newPlanQuery = new this.plannerModel({
-              ...plannerDto,
-              date: dateArray[0],
-              userId: new Types.ObjectId(userId),
-            });
+        const overlappingPlanners = await this.plannerModel.find({
+          date: dateArray[i],
+          $or: [
+            {
+              startTime: { $lt: plannerDto.endTime },
+              endTime: { $gt: plannerDto.startTime },
+            },
+          ],
+        });
 
-            const savedPlan = await newPlanQuery.save();
-            newRootId = new Types.ObjectId(savedPlan._id);
-          }
+        if (overlappingPlanners.length > 0) {
+          updateApprove = false;
+          refuseDate.push(dateArray[i]);
+        }
+      }
+
+      if (updateApprove) {
+        let rootId = new Types.ObjectId(plannerId);
+        if (isHaveParent === true) {
+          rootId = new Types.ObjectId(parentObjectId);
+        }
+
+        // 기준 날짜 이후 데이터 삭제
+        console.log(rootId);
+        const deleteResult = await this.plannerModel.deleteMany({
+          date: { $gt: date },
+          parentObjectId: rootId,
+        });
+        console.log(
+          `${deleteResult.deletedCount}개의 데이터가 삭제되었습니다.`
+        );
+
+        const standardDate = new Date(date);
+        if (sortedDaysArray.includes((standardDate.getDay() + 6) % 7)) {
+          const standardDate = new Date(date);
+          standardDate.setDate(standardDate.getDate() - 1);
+          const dayAgo = standardDate.toISOString().split('T')[0]; // 기준일 하루 전
+
+          // 기준 날짜 이전(기준 날짜 미포함)의 묶인 데이터들의 repeatEndDate를 기준 날짜 하루 전으로 설정
+          await this.plannerModel.findByIdAndUpdate(
+            rootId,
+            { $set: { repeatEndDate: dayAgo } },
+            { new: true }
+          );
+
+          await this.plannerModel.updateMany(
+            {
+              parentObjectId: rootId,
+              date: { $lt: date },
+            },
+            { $set: { repeatEndDate: dayAgo } }
+          );
         } else {
-          await this.createPlanCascade(
-            userId,
-            newRootId,
-            dateArray[i],
-            plannerDto
+          // 기존 날짜 이전(기존 날짜 포함) 데이터들의 repeatEndDate를 standardDate로 설정
+          await this.plannerModel.findByIdAndUpdate(
+            rootId,
+            { $set: { repeatEndDate: date } },
+            { new: true }
+          );
+
+          await this.plannerModel.updateMany(
+            {
+              parentObjectId: rootId,
+              date: { $lt: date },
+            },
+            { $set: { repeatEndDate: date } }
           );
         }
-        createDataNum += 1;
+
+        // 재생성
+        let newRootId: Types.ObjectId;
+        let createDataNum = 0;
+
+        for (let i: number = 0; i < dateArray.length; i++) {
+          if (i === 0) {
+            // 만약 재생성 해야 하는 날짜가 오늘이라면 오늘 할 일을 업데이트, newRootId = new Types.ObjectId(plannerId)
+            if (dateArray[i] === date) {
+              await this.plannerModel.findByIdAndUpdate(
+                new Types.ObjectId(plannerId),
+                {
+                  $set: { ...updatePlannerDto, repeatDays: newRepeatDays },
+                  $unset: { parentObjectId: '' },
+                },
+                { new: true }
+              );
+              newRootId = new Types.ObjectId(plannerId);
+            } else {
+              // 아니라면 날짜 배열의 첫 번째 _id를 newRootId로 설정하고 나머지 할 일 재생성
+              const newPlanQuery = new this.plannerModel({
+                ...plannerDto,
+                repeatDays: newRepeatDays,
+                date: dateArray[0],
+                userId: new Types.ObjectId(userId),
+              });
+
+              const savedPlan = await newPlanQuery.save();
+              newRootId = new Types.ObjectId(savedPlan._id);
+            }
+          } else {
+            await this.createPlanCascade(
+              userId,
+              newRootId,
+              newRepeatDays,
+              dateArray[i],
+              plannerDto
+            );
+          }
+          createDataNum += 1;
+        }
+        console.log(`${createDataNum} 개의 데이터가 수정 or 재생성되었습니다.`);
+      } else {
+        const refuseRes = {
+          message: `${refuseDate} 날짜에 시간대가 겹치는 데이터가 있어 요일 반복 플래너 수정이 불가능 합니다.`,
+          dates: refuseDate,
+        };
+
+        return refuseRes;
       }
-      console.log(`${createDataNum} 개의 데이터가 수정 or 재생성되었습니다.`);
     } else if (isHaveParent === true && isHaveRepetition === false) {
-      const rootId = new Types.ObjectId(parentObjectId);
-      // 기준 날짜 이후의 묶인 데이터들 삭제
-      const deleteResult = await this.plannerModel.deleteMany({
-        date: { $gt: date },
-        parentObjectId: rootId,
-      });
-      console.log(`${deleteResult.deletedCount}개의 데이터가 삭제되었습니다.`);
-
-      // 기준 날짜 이전(기존 날짜 포함)의 묶인 데이터들(부모 데이터 포함)의 repeatEndDate = date
-      await this.plannerModel.findByIdAndUpdate(
-        rootId,
-        { $set: { repeatEndDate: date } },
-        { new: true }
-      );
-
-      await this.plannerModel.updateMany(
-        {
+      if (updateApprove) {
+        const rootId = new Types.ObjectId(parentObjectId);
+        // 기준 날짜 이후의 묶인 데이터들 삭제
+        const deleteResult = await this.plannerModel.deleteMany({
+          date: { $gt: date },
           parentObjectId: rootId,
-          date: { $lte: date },
-        },
-        { $set: { repeatEndDate: date } }
-      );
+        });
+        console.log(
+          `${deleteResult.deletedCount}개의 데이터가 삭제되었습니다.`
+        );
 
-      // 마지막 할 일의 내용 update, 반복 요일을 부모 데이터의 반복 요일로 설정
-      const rootData = await this.plannerModel.findById(rootId);
-      await this.plannerModel.findByIdAndUpdate(
-        new Types.ObjectId(plannerId),
-        { ...updatePlannerDto, repeatDays: rootData.repeatDays },
-        { new: true }
-      );
+        // 기준 날짜 이전(기존 날짜 포함)의 묶인 데이터들(부모 데이터 포함)의 repeatEndDate = date
+        await this.plannerModel.findByIdAndUpdate(
+          rootId,
+          { $set: { repeatEndDate: date } },
+          { new: true }
+        );
+
+        await this.plannerModel.updateMany(
+          {
+            parentObjectId: rootId,
+            date: { $lte: date },
+          },
+          { $set: { repeatEndDate: date } }
+        );
+
+        // 마지막 할 일의 내용 update, 반복 요일을 부모 데이터의 반복 요일로 설정
+        const rootData = await this.plannerModel.findById(rootId);
+        await this.plannerModel.findByIdAndUpdate(
+          new Types.ObjectId(plannerId),
+          { ...updatePlannerDto, repeatDays: rootData.repeatDays },
+          { new: true }
+        );
+      } else {
+        return { message: `플래너 수정 error` };
+      }
     }
   }
 
@@ -344,20 +485,6 @@ export class PlannersService {
 
     return deletePlanQuery;
   }
-
-  // private async deletePlanCascade(
-  //   parentId: Types.ObjectId,
-  //   todayString: string
-  // ): Promise<any> {
-  //   const deleteCascadePlanQuery = await this.plannerModel.deleteMany({
-  //     parentObjectId: new Types.ObjectId(parentId),
-  //     date: { $gt: todayString },
-  //   });
-
-  //   console.log(
-  //     `${deleteCascadePlanQuery.deletedCount} 개의 데이터가 삭제되었습니다.`
-  //   );
-  // }
 
   async toggleIsComplete(userId: string, plannerId: string): Promise<Planner> {
     const planner = await this.plannerModel.findOne({
