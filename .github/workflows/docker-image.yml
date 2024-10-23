@@ -30,6 +30,18 @@ jobs:
       - name: Build the application
         run: npm run build
 
+      - name: Set environment variables
+        run: |
+          echo "PORT=${{ secrets.PORT }}" >> $GITHUB_ENV
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> $GITHUB_ENV
+          echo "AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "AWS_BASE_URL=${{ secrets.AWS_BASE_URL }}" >> $GITHUB_ENV
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_ENV
+          echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2  # 최신 버전으로 업데이트
