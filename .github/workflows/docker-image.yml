@@ -37,10 +37,10 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and Push Docker image
         run: |
           docker buildx build \
             --build-arg PORT=${{ secrets.PORT }} \
@@ -54,10 +54,6 @@ jobs:
             --build-arg JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
             -t ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }} \
             --push .
-
-      - name: Push Docker Image
-        run: |
-          docker push ${{ env.DOCKER_IMAGE }}:${{ env.VERSION }}
 
   deploy:
     needs: build
