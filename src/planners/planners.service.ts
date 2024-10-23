@@ -42,7 +42,6 @@ export class PlannersService {
         const overlappingPlanners = await this.plannerModel.find({
           userId: new Types.ObjectId(userId),
           date: plannerDto.date,
-          userId: new Types.ObjectId(userId),
           $or: [
             {
               startTime: { $lt: plannerDto.endTime },
@@ -254,7 +253,6 @@ export class PlannersService {
       const overlappingPlanners = await this.plannerModel.find({
         userId: new Types.ObjectId(userId),
         date: plannerDto.date,
-        userId: new Types.ObjectId(userId),
         $or: [
           {
             startTime: { $lt: plannerDto.endTime },
