@@ -18,7 +18,7 @@ import { ImageModule } from './image/image.modules';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: './src/configs/.development.env',
+      // envFilePath: './src/configs/.development.env',
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
