@@ -33,7 +33,7 @@ export class Room {
   @Prop({ type: [Types.ObjectId], default: [], ref: 'User' })
   currentMember: Types.ObjectId[];
 
-  @Prop({ type: Date, default: Date.now() })
+  @Prop({ type: Date, default: () => Date.now() })
   createdAt: Date;
 }
 

@@ -16,13 +16,14 @@ export class Temp {
   restStartTime: number;
 
   @Prop({
-    default: new Date()
-      .toLocaleDateString('en-CA', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-      .replace(/\s/g, ''),
+    default: () =>
+      new Date()
+        .toLocaleDateString('en-CA', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        })
+        .replace(/\s/g, ''),
   })
   date: string;
 
