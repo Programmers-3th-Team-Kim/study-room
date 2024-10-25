@@ -618,9 +618,9 @@ export class SocketService {
       { upsert: true }
     );
 
-    if (!(statistic.modifiedCount === 1 || statistic.upsertedCount === 1)) {
-      throw new WsException('UPDATE_STATISTICS');
-    }
+    // if (!(statistic.modifiedCount === 1 || statistic.upsertedCount === 1)) {
+    //   throw new WsException('UPDATE_STATISTICS');
+    // }
 
     return statistic;
   }
