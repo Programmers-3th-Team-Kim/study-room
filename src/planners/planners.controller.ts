@@ -53,10 +53,15 @@ export class PlannersController {
     const { isContinuous, ...updatePlannerDto } = plannerDto;
 
     if (isContinuous) {
-      // 단일 수정
-    } else {
       // 연속 수정
       return this.plannersService.updatePlanCascade(
+        userId,
+        plannerId,
+        updatePlannerDto
+      );
+    } else {
+      // 단일 수정
+      return this.plannersService.updatePlan(
         userId,
         plannerId,
         updatePlannerDto
@@ -73,9 +78,10 @@ export class PlannersController {
   ): Promise<Planner> {
     const userId = req.user._id;
     if (isContinuous) {
-      // 단일 수정
-    } else {
       // 연속 삭제
+      return this.plannersService.deletePlanCascade(userId, plannerId);
+    } else {
+      // 단일 삭제
       return this.plannersService.deletePlan(userId, plannerId);
     }
   }
