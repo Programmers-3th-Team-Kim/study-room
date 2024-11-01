@@ -228,7 +228,56 @@ export class PlannersService {
     return planners;
   }
 
+  // 단일 수정
   async updatePlan(
+    userId: string,
+    plannerId: string,
+    plannerDto: Partial<Planner>
+  ): Promise<any> {
+    // 단일 수정 시 반복 요일 설정 변경에 대한 로직 필요 -> 현재는 요일 반복 설정은 수정 불가능
+    const {
+      date,
+      repeatDays,
+      repeatEndDate,
+      parentObjectId,
+      totalTime,
+      timelineList,
+      ...updatePlannerDto
+    } = plannerDto;
+
+    let updateApprove = true;
+
+    // 시간이 겹치는 할 일 탐색
+    const overlappingPlanners = await this.plannerModel.find({
+      _id: { $ne: new Types.ObjectId(plannerId) },
+      userId: new Types.ObjectId(userId),
+      date: plannerDto.date,
+      $or: [
+        {
+          startTime: { $lt: plannerDto.endTime },
+          endTime: { $gt: plannerDto.startTime },
+        },
+      ],
+    });
+
+    if (overlappingPlanners.length > 0) {
+      updateApprove = false;
+    }
+
+    if (updateApprove) {
+      await this.plannerModel
+        .findByIdAndUpdate(new Types.ObjectId(plannerId), updatePlannerDto, {
+          new: true,
+        })
+        .exec();
+
+      console.log(`단일 플래너 업데이트`);
+      return { message: `단일 플래너 업데이트 성공` };
+    }
+  }
+
+  // 연속 수정
+  async updatePlanCascade(
     userId: string,
     plannerId: string,
     plannerDto: Partial<Planner>
@@ -241,6 +290,8 @@ export class PlannersService {
       ...updatePlannerDto
     } = plannerDto;
 
+    const today = new Date().toISOString().split('T')[0];
+
     let updateApprove = true;
     const isHaveRepetition = !(
       plannerDto.repeatDays.length === 0 ||
@@ -251,6 +302,7 @@ export class PlannersService {
     if (isHaveParent === false && isHaveRepetition === false) {
       // 시간이 겹치는 할 일 탐색
       const overlappingPlanners = await this.plannerModel.find({
+        _id: { $ne: new Types.ObjectId(plannerId) },
         userId: new Types.ObjectId(userId),
         date: plannerDto.date,
         $or: [
@@ -303,8 +355,10 @@ export class PlannersService {
       // 재생성 해야 하는 날짜들의 데이터 계산
       const dateArray: string[] = [];
       const repeatEndDate = new Date(plannerDto.repeatEndDate);
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() + 1); // 하루 더하기
       for (
-        let setUpDate = new Date(date);
+        let setUpDate = startDate;
         setUpDate <= repeatEndDate;
         setUpDate.setDate(setUpDate.getDate() + 1)
       ) {
@@ -321,6 +375,7 @@ export class PlannersService {
 
       for (let i: number = 0; i < dateArray.length; i++) {
         const overlappingPlanners = await this.plannerModel.find({
+          _id: { $ne: new Types.ObjectId(plannerId) },
           userId: new Types.ObjectId(userId),
           date: dateArray[i],
           $or: [
@@ -488,6 +543,31 @@ export class PlannersService {
       .exec();
 
     return deletePlanQuery;
+  }
+
+  async deletePlanCascade(userId: string, plannerId: string): Promise<any> {
+    const rootPlan = await this.plannerModel.findOne({
+      _id: new Types.ObjectId(plannerId),
+      userId: new Types.ObjectId(userId),
+    });
+
+    let rootId = '';
+    if (rootPlan.parentObjectId) {
+      rootId = String(rootPlan.parentObjectId);
+    } else {
+      rootId = plannerId;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const deletePlanCascadeQuery = await this.plannerModel.deleteMany({
+      userId: new Types.ObjectId(userId),
+      parentObjectId: new Types.ObjectId(rootId),
+      date: { $gt: today },
+    });
+
+    return {
+      message: `${deletePlanCascadeQuery.deletedCount}개의 플래너가 삭제되었습니다.`,
+    };
   }
 
   async toggleIsComplete(userId: string, plannerId: string): Promise<Planner> {
