@@ -47,11 +47,10 @@ export class PlannersController {
   async update(
     @Req() req: any,
     @Param('plannerId') plannerId: string,
-    @Body() plannerDto: PlannerDto
+    @Query('isContinuous') isContinuous: boolean,
+    @Body() updatePlannerDto: PlannerDto
   ): Promise<any> {
     const userId = req.user._id;
-    const { isContinuous, ...updatePlannerDto } = plannerDto;
-
     if (isContinuous) {
       // 연속 수정
       return this.plannersService.updatePlanCascade(
@@ -61,11 +60,11 @@ export class PlannersController {
       );
     } else {
       // 단일 수정
-      return this.plannersService.updatePlan(
-        userId,
-        plannerId,
-        updatePlannerDto
-      );
+      // return this.plannersService.updatePlan(
+      //   userId,
+      //   plannerId,
+      //   updatePlannerDto
+      // );
     }
   }
 
