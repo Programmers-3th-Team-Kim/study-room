@@ -138,6 +138,13 @@ export class PlannersService {
 
               const savedPlan = await newPlanQuery.save();
               rootId = new Types.ObjectId(savedPlan._id);
+              await this.plannerModel.findByIdAndUpdate(
+                rootId,
+                {
+                  parentObjectId: rootId,
+                },
+                { new: true }
+              );
             } else {
               await this.createPlanCascade(
                 userId,
@@ -234,16 +241,8 @@ export class PlannersService {
     plannerId: string,
     plannerDto: Partial<Planner>
   ): Promise<any> {
-    // 단일 수정 시 반복 요일 설정 변경에 대한 로직 필요 -> 현재는 요일 반복 설정은 수정 불가능
-    const {
-      date,
-      repeatDays,
-      repeatEndDate,
-      parentObjectId,
-      totalTime,
-      timelineList,
-      ...updatePlannerDto
-    } = plannerDto;
+    // 단일 수정 시 반복 요일 설정 null 로 초기화
+    const { date, totalTime, timelineList, ...updatePlannerDto } = plannerDto;
 
     let updateApprove = true;
 
@@ -265,10 +264,25 @@ export class PlannersService {
     }
 
     if (updateApprove) {
+      const updatePlanner = {
+        ...updatePlannerDto,
+        repeatDays: [],
+      };
+
       await this.plannerModel
-        .findByIdAndUpdate(new Types.ObjectId(plannerId), updatePlannerDto, {
-          new: true,
-        })
+        .findByIdAndUpdate(
+          new Types.ObjectId(plannerId),
+          {
+            $set: updatePlanner,
+            $unset: {
+              repeatEndDate: '',
+              parentObjectId: '',
+            },
+          },
+          {
+            new: true,
+          }
+        )
         .exec();
 
       console.log(`단일 플래너 업데이트`);

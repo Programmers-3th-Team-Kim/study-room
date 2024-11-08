@@ -60,11 +60,11 @@ export class PlannersController {
       );
     } else {
       // 단일 수정
-      // return this.plannersService.updatePlan(
-      //   userId,
-      //   plannerId,
-      //   updatePlannerDto
-      // );
+      return this.plannersService.updatePlan(
+        userId,
+        plannerId,
+        updatePlannerDto
+      );
     }
   }
 
