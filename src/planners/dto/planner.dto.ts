@@ -22,5 +22,5 @@ export class PlannerDto {
 
   timelineList?: StartEndTime[] | [];
 
-  isContinuous?: boolean;
+  // isContinuous?: boolean;
 }
