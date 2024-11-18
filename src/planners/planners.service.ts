@@ -242,7 +242,14 @@ export class PlannersService {
     plannerDto: Partial<Planner>
   ): Promise<any> {
     // 단일 수정 시 반복 요일 설정 null 로 초기화
-    const { date, totalTime, timelineList, ...updatePlannerDto } = plannerDto;
+    const {
+      date,
+      totalTime,
+      timelineList,
+      repeatEndDate,
+      parentObjectId,
+      ...updatePlannerDto
+    } = plannerDto;
 
     let updateApprove = true;
 
@@ -250,7 +257,7 @@ export class PlannersService {
     const overlappingPlanners = await this.plannerModel.find({
       _id: { $ne: new Types.ObjectId(plannerId) },
       userId: new Types.ObjectId(userId),
-      date: plannerDto.date,
+      date: date,
       $or: [
         {
           startTime: { $lt: plannerDto.endTime },
@@ -311,7 +318,11 @@ export class PlannersService {
       plannerDto.repeatDays.length === 0 ||
       plannerDto.repeatEndDate === undefined
     );
-    const isHaveParent = !(plannerDto.parentObjectId === undefined);
+    const isHaveParent = !(parentObjectId === undefined);
+
+    const rootId = new Types.ObjectId(parentObjectId);
+    console.log(parentObjectId);
+    console.log(today);
 
     if (isHaveParent === false && isHaveRepetition === false) {
       // 시간이 겹치는 할 일 탐색
@@ -359,9 +370,7 @@ export class PlannersService {
           if (b === 6) return -1;
           return a - b;
         });
-      console.log(
-        `${plannerDto.date} ~ ${plannerDto.repeatEndDate} 에 ${repeatDays} 요일 반복`
-      );
+
       const newRepeatDays = sortedDaysArray.map(
         (dayNumber) => this.reverseMappingDays[dayNumber]
       );
@@ -371,6 +380,11 @@ export class PlannersService {
       const repeatEndDate = new Date(plannerDto.repeatEndDate);
       const startDate = new Date(today);
       startDate.setDate(startDate.getDate() + 1); // 하루 더하기
+      const repeatStartDate = startDate.toISOString().split('T')[0];
+      console.log(
+        `${repeatStartDate} ~ ${plannerDto.repeatEndDate} 에 ${repeatDays} 요일 반복`
+      );
+
       for (
         let setUpDate = startDate;
         setUpDate <= repeatEndDate;
@@ -385,13 +399,26 @@ export class PlannersService {
       dateArray.sort();
 
       // 시간대가 겹치는 할 일 탐색
+      // -> today 이후 연결된 데이터 검색 후 해당 데이터들은 제외하고 탐색
+      const notInData = [];
+      const notInDataQuery = await this.plannerModel.find({
+        userId: new Types.ObjectId(userId),
+        parentObjectId: rootId,
+        date: { $lt: today },
+      });
+
+      for (let i: number = 0; i < notInDataQuery.length; i++) {
+        notInData.push(new Types.ObjectId(notInDataQuery[i]._id));
+      }
+      console.log(notInData);
+
       const refuseDate: string[] = [];
 
       for (let i: number = 0; i < dateArray.length; i++) {
         const overlappingPlanners = await this.plannerModel.find({
-          _id: { $ne: new Types.ObjectId(plannerId) },
+          _id: { $nin: notInData },
           userId: new Types.ObjectId(userId),
-          date: dateArray[i],
+          date: { $lt: today },
           $or: [
             {
               startTime: { $lt: plannerDto.endTime },
@@ -407,79 +434,79 @@ export class PlannersService {
       }
 
       if (updateApprove) {
-        let rootId = new Types.ObjectId(plannerId);
-        if (isHaveParent === true) {
-          rootId = new Types.ObjectId(parentObjectId);
-        }
-
         // 기준 날짜 이후 데이터 삭제
-        console.log(rootId);
         const deleteResult = await this.plannerModel.deleteMany({
-          date: { $gt: date },
+          date: { $lt: today },
           parentObjectId: rootId,
+          userId: new Types.ObjectId(userId),
         });
         console.log(
           `${deleteResult.deletedCount}개의 데이터가 삭제되었습니다.`
         );
 
-        const standardDate = new Date(date);
-        if (sortedDaysArray.includes((standardDate.getDay() + 6) % 7)) {
-          const standardDate = new Date(date);
-          standardDate.setDate(standardDate.getDate() - 1);
-          const dayAgo = standardDate.toISOString().split('T')[0]; // 기준일 하루 전
+        // const standardDate = new Date(today);
+        // if (sortedDaysArray.includes((standardDate.getDay() + 6) % 7)) {
+        //   standardDate.setDate(standardDate.getDate() - 1);
+        //   const dayAgo = standardDate.toISOString().split('T')[0]; // 기준일 하루 전
+        //   console.log(dayAgo);
 
-          // 기준 날짜 이전(기준 날짜 미포함)의 묶인 데이터들의 repeatEndDate를 기준 날짜 하루 전으로 설정
-          await this.plannerModel.findByIdAndUpdate(
-            rootId,
-            { $set: { repeatEndDate: dayAgo } },
-            { new: true }
-          );
+        // 기준 날짜 이전(기준 날짜 미포함)의 묶인 데이터들의 repeatEndDate를 기준 날짜 하루 전으로 설정
+        // await this.plannerModel.findByIdAndUpdate(
+        //   rootId,
+        //   { $set: { repeatEndDate: dayAgo } },
+        //   { new: true }
+        // );
 
-          await this.plannerModel.updateMany(
-            {
-              parentObjectId: rootId,
-              date: { $lt: date },
-            },
-            { $set: { repeatEndDate: dayAgo } }
-          );
-        } else {
-          // 기존 날짜 이전(기존 날짜 포함) 데이터들의 repeatEndDate를 standardDate로 설정
-          await this.plannerModel.findByIdAndUpdate(
-            rootId,
-            { $set: { repeatEndDate: date } },
-            { new: true }
-          );
+        // await this.plannerModel.updateMany(
+        //   {
+        //     parentObjectId: rootId,
+        //     date: { $lt: date },
+        //   },
+        //   { $set: { repeatEndDate: dayAgo } }
+        // );
+        // } else {
+        // 기존 날짜 이전(기존 날짜 포함) 데이터들의 repeatEndDate를 standardDate로 설정
+        //   await this.plannerModel.findByIdAndUpdate(
+        //     rootId,
+        //     { $set: { repeatEndDate: date } },
+        //     { new: true }
+        //   );
 
-          await this.plannerModel.updateMany(
-            {
-              parentObjectId: rootId,
-              date: { $lt: date },
-            },
-            { $set: { repeatEndDate: date } }
-          );
-        }
+        //   await this.plannerModel.updateMany(
+        //     {
+        //       parentObjectId: rootId,
+        //       date: { $lt: date },
+        //     },
+        //     { $set: { repeatEndDate: date } }
+        //   );
+        // }
 
         // 재생성
-        let newRootId: Types.ObjectId;
+        let newRootId = rootId;
         let createDataNum = 0;
+
+        const root = await this.plannerModel.findById(rootId);
 
         for (let i: number = 0; i < dateArray.length; i++) {
           if (i === 0) {
-            // 만약 재생성 해야 하는 날짜가 오늘이라면 오늘 할 일을 업데이트, newRootId = new Types.ObjectId(plannerId)
-            if (dateArray[i] === date) {
+            // 만약 재생성 해야 하는 날짜가 오늘이라면 오늘 할 일을 업데이트
+            if (dateArray[i] === today) {
               await this.plannerModel.findByIdAndUpdate(
                 new Types.ObjectId(plannerId),
                 {
                   $set: { ...updatePlannerDto, repeatDays: newRepeatDays },
-                  $unset: { parentObjectId: '' },
                 },
                 { new: true }
               );
-              newRootId = new Types.ObjectId(plannerId);
+
+              if (!root) {
+                newRootId = new Types.ObjectId(plannerId);
+              }
             } else {
-              // 아니라면 날짜 배열의 첫 번째 _id를 newRootId로 설정하고 나머지 할 일 재생성
+              // 아니라면 나머지 할 일 재생성
               const newPlanQuery = new this.plannerModel({
                 ...plannerDto,
+                parentObjectId: rootId,
                 repeatDays: newRepeatDays,
                 date: dateArray[0],
                 userId: new Types.ObjectId(userId),
@@ -508,12 +535,11 @@ export class PlannersService {
 
         return refuseRes;
       }
-    } else if (isHaveParent === true && isHaveRepetition === false) {
+    } else if (isHaveRepetition === false) {
       if (updateApprove) {
-        const rootId = new Types.ObjectId(parentObjectId);
         // 기준 날짜 이후의 묶인 데이터들 삭제
         const deleteResult = await this.plannerModel.deleteMany({
-          date: { $gt: date },
+          date: { $gt: today },
           parentObjectId: rootId,
         });
         console.log(
@@ -521,27 +547,27 @@ export class PlannersService {
         );
 
         // 기준 날짜 이전(기존 날짜 포함)의 묶인 데이터들(부모 데이터 포함)의 repeatEndDate = date
-        await this.plannerModel.findByIdAndUpdate(
-          rootId,
-          { $set: { repeatEndDate: date } },
-          { new: true }
-        );
+        // await this.plannerModel.findByIdAndUpdate(
+        //   rootId,
+        //   { $set: { repeatEndDate: date } },
+        //   { new: true }
+        // );
 
-        await this.plannerModel.updateMany(
-          {
-            parentObjectId: rootId,
-            date: { $lte: date },
-          },
-          { $set: { repeatEndDate: date } }
-        );
+        // await this.plannerModel.updateMany(
+        //   {
+        //     parentObjectId: rootId,
+        //     date: { $lte: date },
+        //   },
+        //   { $set: { repeatEndDate: date } }
+        // );
 
         // 마지막 할 일의 내용 update, 반복 요일을 부모 데이터의 반복 요일로 설정
-        const rootData = await this.plannerModel.findById(rootId);
-        await this.plannerModel.findByIdAndUpdate(
-          new Types.ObjectId(plannerId),
-          { ...updatePlannerDto, repeatDays: rootData.repeatDays },
-          { new: true }
-        );
+        // const rootData = await this.plannerModel.findById(rootId);
+        // await this.plannerModel.findByIdAndUpdate(
+        //   new Types.ObjectId(plannerId),
+        //   { ...updatePlannerDto, repeatDays: rootData.repeatDays },
+        //   { new: true }
+        // );
       } else {
         return { message: `플래너 수정 error` };
       }
