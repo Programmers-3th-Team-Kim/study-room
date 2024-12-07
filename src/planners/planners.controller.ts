@@ -47,20 +47,42 @@ export class PlannersController {
   async update(
     @Req() req: any,
     @Param('plannerId') plannerId: string,
+    @Query('isContinuous') isContinuous: boolean,
     @Body() updatePlannerDto: PlannerDto
   ): Promise<any> {
     const userId = req.user._id;
-    return this.plannersService.updatePlan(userId, plannerId, updatePlannerDto);
+    if (isContinuous) {
+      // 연속 수정
+      return this.plannersService.updatePlanCascade(
+        userId,
+        plannerId,
+        updatePlannerDto
+      );
+    } else {
+      // 단일 수정
+      return this.plannersService.updatePlan(
+        userId,
+        plannerId,
+        updatePlannerDto
+      );
+    }
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Delete(':plannerId')
   async delete(
     @Req() req: any,
-    @Param('plannerId') plannerId: string
+    @Param('plannerId') plannerId: string,
+    @Query('isContinuous') isContinuous: boolean
   ): Promise<Planner> {
     const userId = req.user._id;
-    return this.plannersService.deletePlan(userId, plannerId);
+    if (isContinuous) {
+      // 연속 삭제
+      return this.plannersService.deletePlanCascade(userId, plannerId);
+    } else {
+      // 단일 삭제
+      return this.plannersService.deletePlan(userId, plannerId);
+    }
   }
 
   @UseGuards(AuthGuard('jwt'))
